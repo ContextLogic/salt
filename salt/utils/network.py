@@ -1915,3 +1915,28 @@ def dns_check(addr, port=80, safe=False, ipv6=None):
             raise SaltClientError()
         raise SaltSystemExit(code=42, msg=err)
     return resolved
+
+
+def resolve_multi_ip(addr, ipv6=None):
+    '''
+    Return the list of ip addresses resolved by dns, no other checks are performed.
+    In the case of any errors, let dns_check() handle it.
+    '''
+    error = False
+    family = socket.AF_INET6 if ipv6 else socket.AF_INET if ipv6 is False else socket.AF_UNSPEC
+    try:
+        refresh_dns()
+        resolved_multi_ip = []
+        hostnames = socket.getaddrinfo(addr, None, family, socket.SOCK_STREAM)
+        if not hostnames:
+            error = True
+        else:
+            for h in hostnames:
+                resolved_multi_ip.append(h[4][0])
+    except (TypeError, socket.error):
+        error = True
+
+    if not error and resolved_multi_ip:
+        return resolved_multi_ip
+    else:
+        return [addr]

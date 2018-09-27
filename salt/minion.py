@@ -478,7 +478,16 @@ class MinionBase(object):
         self._discover_masters()
 
         # check if master_type was altered from its default
-        if opts['master_type'] != 'str' and opts['__role'] != 'syndic':
+        if opts['master_type'] == 'multi_ip':
+            # populate masters list with multiple addresses if configured
+            masters = self.opts['master']
+            if not isinstance(self.opts['master'], list):
+                masters = [masters]
+            masters_multi_ip = []
+            for master in masters:
+                masters_multi_ip.extend(salt.utils.network.resolve_multi_ip(master, self.opts['ipv6']))
+            self.opts['master'] = masters_multi_ip
+        elif opts['master_type'] != 'str' and opts['__role'] != 'syndic':
             # check for a valid keyword
             if opts['master_type'] == 'func':
                 eval_master_func(opts)
@@ -973,6 +982,13 @@ class MinionManager(MinionBase):
         masters = self.opts['master']
         if (self.opts['master_type'] in ('failover', 'distributed')) or not isinstance(self.opts['master'], list):
             masters = [masters]
+
+        # connect to masters multiple addresses if configured
+        if self.opts['master_type'] == 'multi_ip':
+            masters_multi_ip = []
+            for master in masters:
+                masters_multi_ip.extend(salt.utils.network.resolve_multi_ip(master, self.opts['ipv6']))
+            masters = masters_multi_ip
 
         for master in masters:
             s_opts = copy.deepcopy(self.opts)
